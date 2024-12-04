@@ -57,7 +57,7 @@ root/
 ### Steps
 1. Clone this repository:
    ```bash
-   git clone https://github.com/username/repo-name.git](https://github.com/Abhishek02bhardwaj/Aptamer-Prediction-Data.git
+   git clone https://github.com/Abhishek02bhardwaj/Aptamer-Prediction-Data.git
    ```
 
 <!-- ## Citation
