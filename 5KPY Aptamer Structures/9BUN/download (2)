@@ -1,0 +1,423 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<?php
+$LEVEL = "../";
+require_once('config.php');
+require_once('conf.php');
+// set the submission session on
+?>
+<head>
+
+<title>Context Fold - RNA secondary structure prediction tool</title>
+
+<meta http-equiv="content-type"
+	content="application/xhtml+xml; charset=UTF-8" />
+<meta name="author" content="Shay Zakov, Yoav Goldberg And Elad Levi" />
+<meta name="description" content="RNA context fold form" />
+<meta name="keywords" content="RNA, fold, context fold, secondary structure" />
+<meta name="robots" content="all" />
+<meta name="googlebot" content="all" />
+
+<?php 
+include($LEVEL."headers.php");
+?>
+<!-- for the example button -->
+<script type='text/javascript' src="example.js"></script>
+
+<script type='text/javascript'>
+
+function getXMLHttp()
+{
+  var xmlHttp;
+
+  try
+  {
+    //Firefox, Opera 8.0+, Safari
+    xmlHttp = new XMLHttpRequest();
+  }
+  catch(e)
+  {
+    //Internet Explorer
+    try
+    {
+      xmlHttp = new ActiveXObject("Msxml2.XMLHTTP");
+    }
+    catch(e)
+    {
+      try
+      {
+        xmlHttp = new ActiveXObject("Microsoft.XMLHTTP");
+      }
+      catch(e)
+      {
+        alert("Your browser does not support AJAX!");
+        return false;
+      }
+    }
+  }
+  return xmlHttp;
+}
+///
+/// This fuction build the titles for the molecule
+function buildSub(str,id,type)
+{
+	form = document.getElementById("submitform");
+	doc = form.elements[id];
+	if (str=="")
+	{
+	  doc.innerHTML="";
+	  return;
+	} 
+
+	str = str.split("|",1);
+	
+	xmlhttp = getXMLHttp();
+
+	xmlhttp.onreadystatechange=function()
+	  {
+	  if (xmlhttp.readyState==4 && xmlhttp.status==200)
+	    {
+			//fix bug for IE
+	    	opts = xmlhttp.responseText;
+			if(navigator.appName == "Microsoft Internet Explorer")
+		  	{
+		  		opts = "<option>truncatethis</option>" + xmlhttp.responseText;
+		  	}
+
+	      	doc.innerHTML = opts;
+
+			//fix bug for IE
+	      	if(navigator.appName == "Microsoft Internet Explorer") { // Or any IE testing
+    			doc.outerHTML = doc.outerHTML;
+    	  	}
+	    }
+	  };
+
+	xmlhttp.open("GET","getData.php?type="+type+"&query="+str,true);
+	xmlhttp.send();
+}
+
+function validate_required(field,alerttxt,log)
+{
+	var ans=true;
+	with (field)
+	  {
+	  if (value==null||value=="")
+	    {
+	    	ans=false;
+	    }
+	  }
+	if (ans==false){
+		with (log){
+			value+=alerttxt+"\n";
+		}
+	}
+	return ans;
+}
+
+function validate_file(file,alerttxt,log){
+	if (file.value==null || file.value==""){
+		log.value+=alerttxt+"\n";
+		return false;		
+	}
+	return true;
+}
+
+function checkSequnce(sequence,log,toCorrect){
+	var ans = "";	
+	var wrongLines = 0;
+	var lines = sequence.value.split("\n");
+	var newSeq = "";
+	for (var i = 0; i < lines.length; i++){		
+		//trim and check the line
+		lines[i] = lines[i].trim();
+		if (toCorrect){
+			if (!fixLine(lines, i, log))
+				wrongLines++;			
+			log.style.display = "none";
+		}
+		else{
+			if (!checkLine(lines, i, log))
+				wrongLines++;			
+		}
+		if (lines[i] != ""){
+			newSeq+=lines[i];
+			if (i < lines.length-1)
+				newSeq+="\n";
+		}
+	}
+	sequence.value = newSeq;	
+	return wrongLines == 0;
+
+}
+
+function checkLine (lines, i, log){
+	var reply = true;
+	//check if it's title line
+	if (lines[i].charAt(0) == '>' || lines[i].charAt(0) == '#')
+		return true;
+
+	if (lines[i].length > <? echo $MAXIMUM_LENGHT;?>)
+	{
+		log.value+="The sequence in line "+(i+1)+" is too long ("+lines[i].length+") the maximum lenght is "+<? echo$MAXIMUM_LENGHT; ?>+".\n";
+		return false;
+	}
+		
+	for (var chNum = 0;  chNum < lines[i].length ; chNum++){
+		if (!legalChar(lines[i].charAt(chNum))){
+			log.value+="Line "+(i+1)+" char "+(chNum+1)+" is invalid char. ("+lines[i].charAt(chNum)+")\n";
+			reply = false;
+		}
+	}	
+	return reply;
+}
+
+function fixLine (lines, i, log){
+	var reply = true;
+	//check if it's title line
+	if (lines[i].charAt(0) == '>' || lines[i].charAt(0) == '#')
+		return true;
+
+	var correctedLine = "";
+	for (var chNum = 0;  chNum < lines[i].length ; chNum++){
+		if (legalChar(lines[i].charAt(chNum))){
+			correctedLine+=lines[i].charAt(chNum);
+		}
+		else{
+			reply = false;
+		}
+	}
+	lines[i] = correctedLine;	
+	return reply;
+}
+
+function legalChar(ch){
+	switch(ch){
+		case 'G':
+		case 'C':
+		case 'A':
+		case 'T':
+		case 'U':		
+		case 'g':
+		case 'c':
+		case 'a':
+		case 't':
+		case 'u':		
+			return true;
+		default:
+			return false;
+	}
+}
+
+function fixSequence(sequence,log,button){	
+	checkSequnce(sequence,log,true);
+	button.style.display = "none";
+}
+
+function validate_form(thisform)
+{	
+	var ans = true;
+	with (thisform)
+	{	
+		with(log){
+			value="";
+		}
+		
+		if((seq.checked && !validate_required(sequence,"Sequence must be given!",log)) || 		
+			(fil.checked && !validate_file(file, "file must be coosen!", log))){
+
+			log.style.display = "inline";
+			ans=false;
+		}
+		else
+		{	
+			//in this case get the data of the text area and check header, trim it and check length
+			if (seq.checked){
+				//var errors;
+				if (!checkSequnce(sequence,log,false)){
+					log.style.display = "inline";					
+					fixButton.style.display = "inline";
+					ans=false;
+				}
+			}	
+		}
+		if (newWindow.checked){
+			var w = window.open('about:blank','Popup_Window');
+			target = 'Popup_Window';
+		}
+		else if (toFile.checked){
+			var ww = window.open ('about:blank',"mywindow","width=600,height=400");
+			target = "mywindow";
+		}
+		else{
+			target = "_self"
+			if(ans){
+				waitimg.style.display = "inline";
+				waittxt.style.display = "inline";
+				waitNewLine.style.display = "inline";
+			}
+		}
+		
+	}
+	
+	return ans;
+}
+
+//if the user want to remove the file and enter sequence instead of it
+function enterSeq(){
+	form.file.style.display = "none";
+	form.sequence.style.display = "inline";
+	form.sequence.label = "1";
+//	<p><label for="sequence" >1&nbsp;<abbr title="Insert sequences to be folded. Each sequence should be in a separate line, and may be preceded by a title line starting with the symbol '>'. Sequences may only contain the letters A, C, G, U. Press the Example button below for an example of the input format. You can also choose a specific scoring model among the available alternative models below.">help ?</abbr><br />;
+}
+
+//when the user want to enter file.
+function enterFile(){
+	form = document.getElementById("submitform");	
+	form.sequence.style.display = "none";
+	form.file.style.display = "inline";
+//	<p><label for="sequence" >2&nbsp;<abbr title="Insert sequences to be folded. Each sequence should be in a separate line, and may be preceded by a title line starting with the symbol '>'. Sequences may only contain the letters A, C, G, U. Press the Example button below for an example of the input format. You can also choose a specific scoring model among the available alternative models below.">help ?</abbr><br />
+}
+
+//to support "back" button in the case that file is entered.
+onload = function()
+{
+    form = document.getElementById("submitform");
+	//alert("init func: "+form.seq.checked+", "+form.fil.checked);
+	if (form.seq.checked){
+		form.sequence.style.display = "inline";
+		form.file.style.display = "none";
+	}
+	else{
+		form.file.style.display = "inline";
+		form.sequence.style.display = "none";
+	}
+}
+
+</script>
+
+<style type="text/css">
+table.sample {
+	border-width: 0px;
+	background: #F9F9F9;
+	vertical-align : middle;
+}
+table.sample th {
+	border-width: 0px;
+	background: #F9F9F9;
+	vertical-align : middle;
+}
+table.sample td {
+	border-width: 0px;
+	background: #F9F9F9;
+	vertical-align : middle;
+}
+</style>
+
+</head>
+<body>
+
+<!-- header starts-->
+<?php 
+//include("annotation-loader.php");
+include($LEVEL . "menu.php"); 
+?>
+<!-- header ends here -->
+
+<!-- content starts -->
+<div id="content-outer">
+<div id="content-wrapper" class="container_16">
+
+<div class="grid_4 alpha">
+<div class="sidemenu">
+	<?php include($LEVEL."sideMenu.php"); ?>
+	
+	<h3>Links</h3>
+	<ul>				
+		<li><a href=ContextFold_1_00.zip>Download&nbsp;the ContextFold&nbsp;software</a></li>
+		<li><a href=readme.pdf>Readme file</a></li>
+		<li><a href="http://www.liebertonline.com/doi/abs/10.1089/cmb.2011.0184">Paper</a></li>
+		<li><a href="resources.pdf">Additional resources</a></li>
+	</ul>
+
+</div>
+</div>
+
+
+<div id="main" class="grid_12">
+<h3 style="display: inline-block;margin:0px;padding:0px;">Context Fold</h3><h4 style="display: inline;margin:0px;padding:0px;"> - RNA secondary structure prediction tool</h4>
+<form enctype="multipart/form-data" action="send.php" accept-charset=utf8 method="post" id="submitform"
+	onsubmit="return validate_form(this);" >
+<p>Enter RNA sequence (or sequences, one per line).<br/> 
+We will return the predicted secondary structures.</p>
+
+<input type="radio" id="seq" name="seqOrFile" value="seq" checked="checked" onClick="enterSeq();"/> Enter Sequence 
+<input type="radio" id="fil" name="seqOrFile" value="fil" onClick="enterFile();"/> Upload File<br/> 
+<p><label for="sequence" >Type sequence query </label><b> or upload a file</b> (maximum <? echo $MAXIMUM_LENGHT;?> nt)&nbsp;<abbr title="Insert sequences to be folded. Each sequence should be in a separate line, and may be preceded by a title line starting with the symbol '>'. Sequences may only contain the letters A, C, G, U. Press the Example button below for an example of the input format. You can also choose a specific scoring model among the available alternative models below.">help ?</abbr><br />
+<input type="file" id="file" name="file" value="Browse" style="display:none" tabindex="2"/>
+<textarea rows="5" cols="80" id="sequence" name="sequence" tabindex="1"></textarea></p>
+
+<br/>
+<input type="checkbox" id="toFile" name="toFile" value="false" />&nbsp;Export output to file
+&nbsp;<br/> 
+<input type="checkbox" id="newWindow" name="newWindow" value="false" />&nbsp;Show results in a new window
+&nbsp;<br/> 
+<p class="no-border"><input class="button" type="submit" value="Submit"
+	tabindex="<?echo $tabIndex++;?>" /> <input class="button" type="reset" value="Reset"
+	tabindex="<?echo $tabIndex++;?>" /> <input class="button" type="button" tabindex="<?echo $tabIndex++;?>" value="Example" onclick="example();" /></p>
+	<!-- the example sequnce is in the file example.js -->
+
+<br>
+<p>
+<lable for="scoringModel"><b>Scoring model</b></label>&nbsp;<abbr title="The scoring model the folding prediction algorithm applies. The default model StHighCoHigh is the feature richest model (containing about 70000 nonzero scoring parameters). You may replace it by one of the reduced feature-granularity models (Baseline, StHighCoMed, StMedCoHigh, or StMedCoMed), or by one of the family-specialized models. Family-specialized models contain the same features as in StHighCoHigh, and were trained on specific RNA families. These models are expected to give better predictions when the family of the input sequence is known.">help ?</abbr><br/>
+<?
+$tabIndex = 3;
+$dir = dir($MODELS_PATH);
+while (false !== ($file = $dir->read())) {
+    if ($file != '.' && $file != '..' && !strpos($file,$MODEL_SUFFIX) === false) {
+        $modelName = substr($file,0,strpos($file,$MODEL_SUFFIX));
+		$isChecked = '';
+		if ($modelName == $DEFAULT_MODEL)
+			$isChecked = 'checked="checked"';				
+		?><input type="radio" id="scoringModel" name="scoringModel" value="<? echo $modelName;?>" tabindex="<?echo $tabIndex++;?>" <?echo $isChecked;?> /> <?echo $modelName;?><br/> 
+<?				
+	}
+}
+$dir->close();
+?>
+
+	<!-- the log is a field to display errors -->
+<p>
+<textarea id="log" name="log" rows="4" cols="80" style="display:none" ></textarea>
+</p>
+<p class="no-border">
+<input id = "fixButton" class="button" type="button" tabindex="<?echo $tabIndex++;?>" style="display:none" value="Remove invalid chars" onclick="fixSequence(sequence,log,this);"
+</p>
+	
+	
+</form>
+<h3 id="waittxt" style="display:none">Please wait while your request is being processed... </h3>
+<img id="waitimg" style="display:none" src="../images/wait.gif"></img>
+<br id="waitNewLine" style="display:none">
+Context Fold is an RNA secondary structure prediction tool. It
+applies feature-rich scoring models, whose parameters were obtained
+after training on comprehensive datasets. <br>
+A description of the scoring
+models and a comparison of their prediction accuracies with other
+models can be found in the paper "<a href="http://www.liebertonline.com/doi/abs/10.1089/cmb.2011.0184">Rich Parameterization Improves RNA
+Structure Prediction</a>", by Shay Zakov, Yoav Goldberg, Michael Elhadad
+and Michal Ziv-Ukelson.
+<br/><br/>
+Context Fold web interface was created by Elad Levi, 2012.
+</div>
+<!-- contents end here --></div>
+</div>
+
+<!-- footer starts here -->
+<?php 
+include($LEVEL."footer.php"); 
+?>
+<!-- footer ends here -->
+
+</body>
+</html>
